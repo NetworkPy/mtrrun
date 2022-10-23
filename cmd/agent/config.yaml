@@ -1,0 +1,6 @@
+host: "localhost:8080"
+timeout: 5
+maxIdleConns: 5
+maxRequestsPerMoment: 5
+reportInterval: 10
+pollInterval: 2
