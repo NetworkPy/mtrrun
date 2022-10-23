@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	NotStatusOK = fmt.Errorf("response status not 200")
+	ErrNotStatusOK = fmt.Errorf("response status not 200")
 )
 
 // Client http implementation
@@ -56,7 +56,7 @@ func (c *client) DoRequest(method, url string, header map[string]string, body []
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return NotStatusOK
+		return ErrNotStatusOK
 	}
 
 	return nil

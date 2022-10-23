@@ -29,19 +29,19 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricType, ok := vars["metric_type"]
 
 	if !ok {
-		http.Error(w, fmt.Sprintf("unable parse path parametr 'metric_type'"), http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'metric_type'", http.StatusBadRequest)
 	}
 
 	metricName, ok := vars["metric_name"]
 
 	if !ok {
-		http.Error(w, fmt.Sprintf("unable parse path parametr 'metric_name'"), http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'metric_name'", http.StatusBadRequest)
 	}
 
 	value, ok := vars["value"]
 
 	if !ok {
-		http.Error(w, fmt.Sprintf("unable parse path parametr 'value'"), http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'value'", http.StatusBadRequest)
 	}
 
 	fmt.Println(metricType, metricName, value)

@@ -41,7 +41,7 @@ func convertByteToStr(b []byte) []string {
 		return str
 	}
 
-	digit := make([]byte, 8, 8)
+	digit := make([]byte, 8)
 	var count int
 
 	for i := 0; i < len(b); i++ {

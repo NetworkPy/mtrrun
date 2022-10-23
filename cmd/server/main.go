@@ -20,7 +20,7 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    "127.0.0.1:8080",
 		Handler: r,
 	}
 
@@ -32,7 +32,7 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-	log.Print("server started")
+	log.Printf("server started on 8080 port")
 
 	<-done
 	log.Print("server stopped")

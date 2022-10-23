@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"github.com/mtrrun/internal/agent"
 	"github.com/mtrrun/internal/config"
 	"log"
@@ -83,14 +82,24 @@ const (
 )
 
 func main() {
-	var path string
-	flag.StringVar(&path, "config", "config.yaml", "your name")
-	flag.Parse()
+	//var path string
+	//flag.StringVar(&path, "config", "config.yaml", "your name")
+	//flag.Parse()
+	//
+	//c, err := config.ReadAgentConfig(path)
 
-	c, err := config.ReadAgentConfig(path)
+	//if err != nil {
+	//	log.Fatalf(err.Error())
+	//}
 
-	if err != nil {
-		log.Fatalf(err.Error())
+	// TODO: hardcode config because CI/CD don't load config file
+	c := &config.AgentConfig{
+		Host:                 "127.0.0.1:8080",
+		Timeout:              5,
+		MaxIdleConns:         5,
+		MaxRequestsPerMoment: 5,
+		ReportInterval:       10,
+		PollInterval:         2,
 	}
 
 	a, err := agent.New(&agent.Config{
