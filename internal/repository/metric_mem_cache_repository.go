@@ -26,7 +26,7 @@ func NewMetricMemCache() *MetricMemCache {
 }
 
 // SelectGaugeByName selecting gauge metric by name
-func (c *MetricMemCache) SelectGaugeByName(name string) (model.Gauge, error) {
+func (c *MetricMemCache) SelectGaugeByName(ctx context.Context, name string) (model.Gauge, error) {
 	c.gaugeMu.RLock()
 	defer c.gaugeMu.RUnlock()
 
@@ -38,11 +38,11 @@ func (c *MetricMemCache) SelectGaugeByName(name string) (model.Gauge, error) {
 		return metric, nil
 	}
 
-	return metric, fmt.Errorf("gauge metric by name=%s not found", name)
+	return metric, fmt.Errorf("gauge metric by name not found")
 }
 
 // SelectCounterByName selecting counter metric by name
-func (c *MetricMemCache) SelectCounterByName(name string) (model.Counter, error) {
+func (c *MetricMemCache) SelectCounterByName(ctx context.Context, name string) (model.Counter, error) {
 	c.counterMu.RLock()
 	defer c.counterMu.RUnlock()
 
@@ -54,7 +54,7 @@ func (c *MetricMemCache) SelectCounterByName(name string) (model.Counter, error)
 		return metric, nil
 	}
 
-	return metric, fmt.Errorf("counter metric by name=%s not found", name)
+	return metric, fmt.Errorf("counter metric by name not found")
 }
 
 func (c *MetricMemCache) InsertGauge(ctx context.Context, metric model.Gauge) error {

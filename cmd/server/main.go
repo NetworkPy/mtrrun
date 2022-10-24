@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/gorilla/mux"
 	"github.com/mtrrun/internal/handler"
+	"github.com/mtrrun/internal/repository"
+	"github.com/mtrrun/internal/service"
 	"log"
 	"net/http"
 	"os"
@@ -20,9 +22,18 @@ var (
 func main() {
 	r := mux.NewRouter()
 
+	// Create repository layer
+	metCache := repository.NewMetricMemCache()
+
+	// Create service layer
+	metSrv := service.NewMetricService(&service.MetricServiceConfig{
+		MetRepo: metCache,
+	})
+
 	// Register all endpoints
 	handler.New(&handler.Config{
 		Router: r,
+		MetSrv: metSrv,
 	})
 
 	srv := &http.Server{
