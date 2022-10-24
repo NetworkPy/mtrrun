@@ -12,15 +12,21 @@ import (
 	"time"
 )
 
+// TODO: will be remove how project starts  to use config
+var (
+	defaultAddr = "127.0.0.1:8080"
+)
+
 func main() {
 	r := mux.NewRouter()
 
+	// Register all endpoints
 	handler.New(&handler.Config{
 		Router: r,
 	})
 
 	srv := &http.Server{
-		Addr:    "127.0.0.1:8080",
+		Addr:    defaultAddr,
 		Handler: r,
 	}
 
