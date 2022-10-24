@@ -44,15 +44,7 @@ func New(c *Config) {
 
 // UpdateMetric accepts request for create or update metrics
 func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
-	contentType := r.Header.Get("Content-Type")
 	ctx := r.Context()
-
-	if contentType != "text/plain" {
-		log.Printf("unsupported media type. Expected: text/plain. Actual: %s", contentType)
-		http.Error(w, "unsupported media type. Expected: text/plain", http.StatusUnsupportedMediaType)
-
-		return
-	}
 
 	vars := mux.Vars(r)
 	metricType, ok := vars["metric_type"]
@@ -77,8 +69,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	if len(metricName) == 0 {
 		log.Println("unable to parse name. Expected: string with length > 0")
-		http.Error(w, fmt.Sprintf(fmt.Sprintf("unable to parse name. Expected: string with length > 0"),
-			gauge, counter, metricType), http.StatusBadRequest)
+		http.Error(w, "unable to parse name. Expected: string with length > 0", http.StatusBadRequest)
 
 		return
 	}

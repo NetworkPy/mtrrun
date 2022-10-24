@@ -86,16 +86,10 @@ func (s *MetricService) PutGauge(ctx context.Context, dto model.PutGaugeDTO) err
 	// Now error doesn't return fatal error. Any error = metric not exist
 	if err != nil {
 		log.Println("metric with type 'gauge' not found")
-
-		metric := model.Gauge{
-			Name:  dto.Name,
-			Value: dto.Value,
-		}
-
 		log.Println("metric with type 'gauge' will be create")
 
 		// Creating new metric if it not exists
-		err = s.metRepo.InsertGauge(ctx, metric)
+		err = s.metRepo.InsertGauge(ctx, model.Gauge(dto))
 
 		if err != nil {
 			log.Println("metric with type 'gauge' didn't be create")
@@ -137,15 +131,10 @@ func (s *MetricService) PutCounter(ctx context.Context, dto model.PutCounterDTO)
 	if err != nil {
 		log.Println("metric with type 'counter' not found")
 
-		metric := model.Counter{
-			Name:  dto.Name,
-			Value: dto.Value,
-		}
-
 		log.Println("metric with type 'counter' will be create")
 
 		// Creating new metric if it not exists
-		err = s.metRepo.InsertCounter(ctx, metric)
+		err = s.metRepo.InsertCounter(ctx, model.Counter(dto))
 
 		if err != nil {
 			log.Println("metric with type 'counter' didn't be create")
