@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/mtrrun/internal/model"
+	"html/template"
 	"log"
 	"net/http"
 	"strconv"
@@ -18,6 +19,7 @@ const (
 type metricService interface {
 	GetGauge(ctx context.Context, name string) (model.GetGaugeDTO, error)
 	GetCounter(ctx context.Context, name string) (model.GetCounterDTO, error)
+	GetAll(ctx context.Context) ([]model.GetAllDTO, error)
 	PutGauge(ctx context.Context, dto model.PutGaugeDTO) error
 	PutCounter(ctx context.Context, dto model.PutCounterDTO) error
 }
@@ -39,7 +41,9 @@ func New(c *Config) {
 		metSrv: c.MetSrv,
 	}
 
+	c.Router.HandleFunc("/", h.GetStaticAllMetrics).Methods(http.MethodGet)
 	c.Router.HandleFunc("/update/{metric_type}/{metric_name}/{value}", h.UpdateMetric).Methods(http.MethodPost)
+	c.Router.HandleFunc("/value/{metric_type}/{metric_name}", h.GetMetric).Methods(http.MethodGet)
 }
 
 // UpdateMetric accepts request for create or update metrics
@@ -51,18 +55,24 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 
 	if !ok {
 		http.Error(w, "unable parse path parameter 'metric_type'", http.StatusBadRequest)
+
+		return
 	}
 
 	metricName, ok := vars["metric_name"]
 
 	if !ok {
 		http.Error(w, "unable parse path parameter 'metric_name'", http.StatusBadRequest)
+
+		return
 	}
 
 	value, ok := vars["value"]
 
 	if !ok {
 		http.Error(w, "unable parse path parameter 'value'", http.StatusBadRequest)
+
+		return
 	}
 
 	// Validate path params
@@ -133,5 +143,115 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 
 		return
+	}
+}
+
+// GetMetric return information about metric by name if it exists
+func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+	metricType, ok := vars["metric_type"]
+
+	if !ok {
+		http.Error(w, "unable parse path parameter 'metric_type'", http.StatusBadRequest)
+
+		return
+	}
+
+	metricName, ok := vars["metric_name"]
+
+	if !ok {
+		http.Error(w, "unable parse path parameter 'metric_name'", http.StatusBadRequest)
+
+		return
+	}
+
+	if len(metricName) == 0 {
+		http.Error(w, "unable parse path parameter 'metric_type'", http.StatusBadRequest)
+
+		return
+	}
+
+	switch metricType {
+	case gauge:
+		metric, err := h.metSrv.GetGauge(ctx, metricName)
+
+		if err != nil {
+			// TODO: убрать костыль и сделать проверку на no rows
+			log.Printf("unable to select gauge metric with name=%s", metricName)
+			http.Error(w, fmt.Sprintf("unable to select gauge metric with name=%s", metricName),
+				http.StatusNotFound)
+
+			return
+		}
+
+		_, err = w.Write([]byte(fmt.Sprintf("%f", metric.Value)))
+
+		if err != nil {
+			log.Printf("unable to write body")
+			http.Error(w, "internal server error",
+				http.StatusNotFound)
+		}
+	case counter:
+		metric, err := h.metSrv.GetCounter(ctx, metricName)
+
+		if err != nil {
+			// TODO: убрать костыль и сделать проверку на no rows
+			log.Printf("unable to select counter metric with name=%s", metricName)
+			http.Error(w, fmt.Sprintf("unable to counter gauge metric with name=%s", metricName),
+				http.StatusNotFound)
+
+			return
+		}
+
+		_, err = w.Write([]byte(fmt.Sprintf("%d", metric.Value)))
+
+		if err != nil {
+			log.Printf("unable to write body")
+			http.Error(w, "internal server error",
+				http.StatusNotFound)
+		}
+	default:
+		log.Printf("unknown metric type. Expected %s or %s. Actual: %s\n", gauge, counter, metricType)
+		http.Error(w, fmt.Sprintf("unknown metric type. Expected %s or %s. Actual: %s\n", gauge, counter, metricType),
+			http.StatusNotImplemented)
+
+		return
+	}
+}
+
+// GetStaticAllMetrics return HTML with information about all metrics which exist
+func (h *Handler) GetStaticAllMetrics(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	tmpl := template.Must(template.New("metrics").Parse(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+	{{range . }}
+		{{if .Name}}
+<ol>{{.Name}}: {{.Value}}</ol>
+		{{end}}
+	{{end}}
+</body>
+</html>
+`))
+
+	data, err := h.metSrv.GetAll(ctx)
+
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+
+	err = tmpl.Execute(w, data)
+
+	if err != nil {
+		log.Printf("template execute finished with err. Error: %s\n", err)
+
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }

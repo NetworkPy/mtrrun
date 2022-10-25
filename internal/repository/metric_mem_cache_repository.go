@@ -127,3 +127,25 @@ func (c *MetricMemCache) DeleteCounter(ctx context.Context, name string) error {
 
 	return nil
 }
+
+// SelectGauge selecting all metrics with type gauge
+func (c *MetricMemCache) SelectGauge(ctx context.Context) ([]model.Gauge, error) {
+	result := make([]model.Gauge, 0, len(c.gauge))
+
+	for _, v := range c.gauge {
+		result = append(result, v)
+	}
+
+	return result, nil
+}
+
+// SelectCounter selecting all metrics with type counter
+func (c *MetricMemCache) SelectCounter(ctx context.Context) ([]model.Counter, error) {
+	result := make([]model.Counter, 0, len(c.counter))
+
+	for _, v := range c.counter {
+		result = append(result, v)
+	}
+
+	return result, nil
+}

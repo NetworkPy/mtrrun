@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/mtrrun/internal/model"
 	"log"
 )
@@ -10,6 +11,8 @@ import (
 type metricRepository interface {
 	SelectGaugeByName(ctx context.Context, name string) (model.Gauge, error)
 	SelectCounterByName(ctx context.Context, name string) (model.Counter, error)
+	SelectGauge(ctx context.Context) ([]model.Gauge, error)
+	SelectCounter(ctx context.Context) ([]model.Counter, error)
 	InsertGauge(ctx context.Context, metric model.Gauge) error
 	InsertCounter(ctx context.Context, metric model.Counter) error
 	UpdateGauge(ctx context.Context, curr model.Gauge) error
@@ -164,4 +167,41 @@ func (s *MetricService) PutCounter(ctx context.Context, dto model.PutCounterDTO)
 	log.Println("metric with type 'counter' updated")
 
 	return nil
+}
+
+// GetAll return all metrics. Calling repository methods for select all gauges and counters
+func (s *MetricService) GetAll(ctx context.Context) ([]model.GetAllDTO, error) {
+	result := make([]model.GetAllDTO, 0)
+
+	dataGauge, err := s.metRepo.SelectGauge(ctx)
+
+	if err != nil {
+		log.Println("unable to find all gauge metrics")
+
+		return result, err
+	}
+
+	dataCounter, err := s.metRepo.SelectCounter(ctx)
+
+	if err != nil {
+		log.Println("unable to find all counter metrics")
+
+		return result, err
+	}
+
+	for i := 0; i < len(dataGauge); i++ {
+		result = append(result, model.GetAllDTO{
+			Name:  dataGauge[i].Name,
+			Value: fmt.Sprintf("%f", dataGauge[i].Value),
+		})
+	}
+
+	for i := 0; i < len(dataCounter); i++ {
+		result = append(result, model.GetAllDTO{
+			Name:  dataCounter[i].Name,
+			Value: fmt.Sprintf("%d", dataCounter[i].Value),
+		})
+	}
+
+	return result, nil
 }

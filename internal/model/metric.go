@@ -39,3 +39,8 @@ type PutCounterDTO struct {
 	Name  string
 	Value int64
 }
+
+type GetAllDTO struct {
+	Name  string
+	Value string
+}
