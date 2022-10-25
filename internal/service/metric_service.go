@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mtrrun/internal/model"
 	"log"
+	"strconv"
 )
 
 // metricRepository contract for repository layer
@@ -192,7 +193,7 @@ func (s *MetricService) GetAll(ctx context.Context) ([]model.GetAllDTO, error) {
 	for i := 0; i < len(dataGauge); i++ {
 		result = append(result, model.GetAllDTO{
 			Name:  dataGauge[i].Name,
-			Value: fmt.Sprintf("%f", dataGauge[i].Value),
+			Value: strconv.FormatFloat(dataGauge[i].Value, 'f', -1, 64),
 		})
 	}
 

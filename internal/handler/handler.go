@@ -186,7 +186,7 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = w.Write([]byte(fmt.Sprintf("%f", metric.Value)))
+		_, err = w.Write([]byte(strconv.FormatFloat(metric.Value, 'f', -1, 64)))
 
 		if err != nil {
 			log.Printf("unable to write body")
