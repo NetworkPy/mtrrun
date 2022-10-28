@@ -57,7 +57,6 @@ func (r *tracker) Status() []Status {
 func NewTracker() Tracker {
 
 	return &tracker{
-		mu:      sync.RWMutex{},
 		metrics: make(map[string]Metric),
 	}
 }

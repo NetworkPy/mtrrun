@@ -12,11 +12,11 @@ type counter struct {
 	d   *Description
 }
 
-func (c *counter) Desc() *Description {
+func (c *counter) Desc() Description {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return c.d
+	return *c.d
 }
 
 // Inc increments the Counter by 1. Use Add to increment it by arbitrary values
@@ -37,7 +37,6 @@ func (c *counter) GetValue() string {
 
 func NewCounter(name string, help string) Counter {
 	return &counter{
-		mu:  sync.RWMutex{},
 		val: 0,
 		d: &Description{
 			Name: name,

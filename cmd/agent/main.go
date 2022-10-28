@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-	"github.com/mtrrun/internal/agent"
-	"github.com/mtrrun/internal/config"
 	"log"
 	"math/rand"
 	"os"
@@ -11,6 +8,9 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/mtrrun/internal/agent"
+	"github.com/mtrrun/internal/config"
 )
 
 // Golang runtime metrics:
@@ -45,6 +45,7 @@ import (
 // Other custom metrics:
 // Metric name: "PollCount", type: counter — counter, incremented by 1 each time a metric from the runtime package is updated.
 // Metric name: "RandomValue", type: gauge — random value.
+
 const (
 	MetricAlloc       = "Alloc"
 	MetricBuckHashSys = "BuckHashSys"
@@ -77,8 +78,15 @@ const (
 	MetricRandomValue = "RandomValue"
 )
 
+// For configuration
 const (
-	defaultPollInterval = 2
+	defaultPollInterval  = 2
+	host                 = "127.0.0.1:8080"
+	timeout              = 5 * time.Second
+	maxIdleConns         = 5
+	maxRequestsPerMoment = 5
+	reportInterval       = 10 * time.Second
+	pollInterval         = 2 * time.Second
 )
 
 func main() {
@@ -94,12 +102,12 @@ func main() {
 
 	// TODO: hardcode config because CI/CD don't load config file
 	c := &config.AgentConfig{
-		Host:                 "127.0.0.1:8080",
-		Timeout:              5,
-		MaxIdleConns:         5,
-		MaxRequestsPerMoment: 5,
-		ReportInterval:       10,
-		PollInterval:         2,
+		Host:                 host,
+		Timeout:              timeout,
+		MaxIdleConns:         maxIdleConns,
+		MaxRequestsPerMoment: maxRequestsPerMoment,
+		ReportInterval:       reportInterval,
+		PollInterval:         pollInterval,
 	}
 
 	a, err := agent.New(&agent.Config{
@@ -110,22 +118,15 @@ func main() {
 		Timeout:              c.Timeout,
 		MaxIdleConns:         c.MaxIdleConns,
 	})
-
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("failed to create agent: %s", err)
 	}
-
-	// Global context for agent
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
 
 	m := &runtime.MemStats{}
 
 	if c.PollInterval == 0 {
 		c.PollInterval = defaultPollInterval
 	}
-
-	pollTicker := time.NewTicker(time.Duration(c.PollInterval) * time.Second)
 
 	// Init runtime metrics
 	metricAlloc := agent.NewGauge(MetricAlloc, "")
@@ -188,18 +189,23 @@ func main() {
 	a.Track(metricStackSys)
 	a.Track(metricSys)
 	a.Track(metricTotalAlloc)
-
 	a.Track(metricPollCount)
 	a.Track(metricRandomValue)
 
+	// Ticker for cycle with collecting metrics
+	pollTicker := time.NewTicker(c.PollInterval)
+
+	// Channel for gracefully shutdown
+	exitCh := make(chan struct{})
+
 	go func() {
-	LOOP:
 		for {
 			select {
-			case <-ctx.Done():
+			case <-exitCh:
 				pollTicker.Stop()
+				log.Println("main cycle with collecting metrics stopped")
 
-				break LOOP
+				return
 			case <-pollTicker.C:
 				runtime.ReadMemStats(m)
 				rand.Seed(time.Now().UTC().UnixNano())
@@ -243,17 +249,20 @@ func main() {
 
 	go func() {
 		// Starting agent cycle
-		a.Run(ctx)
+		a.Run()
 	}()
 
 	log.Println("agent started")
 
 	<-done
 
-	log.Println("agent stopped")
+	go func() {
+		a.Shutdown()
+		log.Println("agent stopped")
+		close(exitCh)
+	}()
 
-	cancel()
-	time.Sleep(time.Second * 2)
+	<-exitCh
 
 	log.Println("agent exited properly")
 }

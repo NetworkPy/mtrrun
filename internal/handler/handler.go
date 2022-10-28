@@ -3,12 +3,13 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/mtrrun/internal/model"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
+	"github.com/mtrrun/internal/model"
 )
 
 const (
@@ -41,9 +42,23 @@ func New(c *Config) {
 		metSrv: c.MetSrv,
 	}
 
-	c.Router.HandleFunc("/", h.GetStaticAllMetrics).Methods(http.MethodGet)
-	c.Router.HandleFunc("/update/{metric_type}/{metric_name}/{value}", h.UpdateMetric).Methods(http.MethodPost)
-	c.Router.HandleFunc("/value/{metric_type}/{metric_name}", h.GetMetric).Methods(http.MethodGet)
+	c.Router.HandleFunc("/", panicMiddleware(h.GetStaticAllMetrics)).Methods(http.MethodGet)
+	c.Router.HandleFunc("/update/{metric_type}/{metric_name}/{value}", panicMiddleware(h.UpdateMetric)).Methods(http.MethodPost)
+	c.Router.HandleFunc("/value/{metric_type}/{metric_name}", panicMiddleware(h.GetMetric)).Methods(http.MethodGet)
+}
+
+// For recover in request process with panic
+func panicMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if i := recover(); i != nil {
+				log.Printf("panic at %s: %v", r.URL.Path, i)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // UpdateMetric accepts request for create or update metrics

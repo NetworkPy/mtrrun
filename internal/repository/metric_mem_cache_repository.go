@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"github.com/mtrrun/internal/model"
 	"sync"
+
+	"github.com/mtrrun/internal/model"
 )
 
 // MetricMemCache in memory cache for server with metrics.
@@ -78,8 +79,8 @@ func (c *MetricMemCache) InsertCounter(ctx context.Context, metric model.Counter
 
 // UpdateGauge updating counter metric. It is assumed that the metric exists
 func (c *MetricMemCache) UpdateGauge(ctx context.Context, curr model.Gauge) error {
-	c.gaugeMu.RLock()
-	defer c.gaugeMu.RLock()
+	c.gaugeMu.Lock()
+	defer c.gaugeMu.Unlock()
 
 	// We can do c.gauge[curr.Name] = curr.
 	// But in continue we could want to update
@@ -96,8 +97,8 @@ func (c *MetricMemCache) UpdateGauge(ctx context.Context, curr model.Gauge) erro
 
 // UpdateCounter updating counter metric. It is assumed that the metric exists
 func (c *MetricMemCache) UpdateCounter(ctx context.Context, curr model.Counter) error {
-	c.counterMu.RLock()
-	defer c.counterMu.RLock()
+	c.counterMu.Lock()
+	defer c.counterMu.Unlock()
 
 	prev := c.counter[curr.Name]
 
@@ -111,7 +112,7 @@ func (c *MetricMemCache) UpdateCounter(ctx context.Context, curr model.Counter) 
 // DeleteGauge deleting metric with gauge type
 func (c *MetricMemCache) DeleteGauge(ctx context.Context, name string) error {
 	c.gaugeMu.Lock()
-	defer c.gaugeMu.Lock()
+	defer c.gaugeMu.Unlock()
 
 	delete(c.gauge, name)
 
@@ -121,7 +122,7 @@ func (c *MetricMemCache) DeleteGauge(ctx context.Context, name string) error {
 // DeleteCounter deleting metric with counter type
 func (c *MetricMemCache) DeleteCounter(ctx context.Context, name string) error {
 	c.counterMu.Lock()
-	defer c.counterMu.Lock()
+	defer c.counterMu.Unlock()
 
 	delete(c.counter, name)
 
@@ -130,6 +131,9 @@ func (c *MetricMemCache) DeleteCounter(ctx context.Context, name string) error {
 
 // SelectGauge selecting all metrics with type gauge
 func (c *MetricMemCache) SelectGauge(ctx context.Context) ([]model.Gauge, error) {
+	c.gaugeMu.RLock()
+	defer c.gaugeMu.RUnlock()
+
 	result := make([]model.Gauge, 0, len(c.gauge))
 
 	for _, v := range c.gauge {
@@ -141,6 +145,9 @@ func (c *MetricMemCache) SelectGauge(ctx context.Context) ([]model.Gauge, error)
 
 // SelectCounter selecting all metrics with type counter
 func (c *MetricMemCache) SelectCounter(ctx context.Context) ([]model.Counter, error) {
+	c.counterMu.RLock()
+	defer c.counterMu.RUnlock()
+
 	result := make([]model.Counter, 0, len(c.counter))
 
 	for _, v := range c.counter {

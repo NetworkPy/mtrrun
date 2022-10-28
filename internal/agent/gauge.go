@@ -12,11 +12,11 @@ type gauge struct {
 	d   *Description
 }
 
-func (g *gauge) Desc() *Description {
+func (g *gauge) Desc() Description {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	return g.d
+	return *g.d
 }
 
 // Set sets the Gauge to an arbitrary value.
@@ -69,7 +69,6 @@ func (g *gauge) GetValue() string {
 
 func NewGauge(name string, help string) Gauge {
 	return &gauge{
-		mu:  sync.RWMutex{},
 		val: 0,
 		d: &Description{
 			Name: name,

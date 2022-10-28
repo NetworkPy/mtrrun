@@ -3,13 +3,20 @@ package agent
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
 
-var (
-	ErrNotStatusOK = fmt.Errorf("response status not 200")
-)
+// customHttpError for check results if request contains status 4** or 5**
+type customHTTPError struct {
+	Message string
+	Status  int
+}
+
+func (e *customHTTPError) Error() string {
+	return fmt.Sprintf("request ended with status %d and error: %s", e.Status, e.Message)
+}
 
 // Client http implementation
 type client struct {
@@ -17,7 +24,7 @@ type client struct {
 }
 
 // NewClient constructor for client
-func NewClient(timeout int, maxIdleConns int) Client {
+func NewClient(timeout time.Duration, maxIdleConns int) Client {
 	transport := &http.Transport{}
 
 	if maxIdleConns != 0 {
@@ -28,7 +35,7 @@ func NewClient(timeout int, maxIdleConns int) Client {
 	newClient.Transport = transport
 
 	if timeout != 0 {
-		newClient.Timeout = time.Duration(timeout) * time.Second
+		newClient.Timeout = timeout
 	}
 
 	return newClient
@@ -36,27 +43,37 @@ func NewClient(timeout int, maxIdleConns int) Client {
 }
 
 // DoRequest sending request to resource
-func (c *client) DoRequest(method, url string, header map[string]string, body []byte) error {
+func (c *client) DoRequest(method, url string, headers map[string]string, body []byte) error {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 
-	for k, v := range header {
+	for k, v := range headers {
 		req.Header.Add(k, v)
 	}
-
 	if err != nil {
 		return err
 	}
 
 	resp, err := c.Do(req)
-
 	if err != nil {
 		return err
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
-	if resp.StatusCode != http.StatusOK {
-		return ErrNotStatusOK
+	if resp.StatusCode >= http.StatusBadRequest {
+		var b []byte
+
+		b, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+
+		return &customHTTPError{
+			Message: string(b),
+			Status:  resp.StatusCode,
+		}
 	}
 
 	return nil

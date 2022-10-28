@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,7 +11,7 @@ import (
 // Metric is interface for
 // all metric types.
 type Metric interface {
-	Desc() *Description
+	Desc() Description
 	GetValue() string
 }
 
@@ -103,11 +102,14 @@ type Agent struct {
 
 	// Time interval in seconds for sending request to other service.
 	// If reportInterval is empty that will be use default value - 2 second.
-	reportInterval int
+	reportInterval time.Duration
 
 	// Interval in seconds which call update metrics.
 	// If pollInterval is empty that will be use default value - 10 second.
-	pollInterval int
+	pollInterval time.Duration
+
+	// Channel for gracefully shutdown
+	exit chan struct{}
 
 	host                 string
 	maxRequestsPerMoment int
@@ -117,14 +119,14 @@ type Agent struct {
 type Config struct {
 	//Container      Tracker
 	//Client         Client
-	ReportInterval int
-	PollInterval   int
+	ReportInterval time.Duration
+	PollInterval   time.Duration
 
 	Host                 string
 	MaxRequestsPerMoment int
 
-	Timeout      int // Time in seconds
-	MaxIdleConns int // Max cached connections
+	Timeout      time.Duration // Time in seconds
+	MaxIdleConns int           // Max cached connections
 }
 
 // New constructor for Agent
@@ -174,26 +176,29 @@ func (a *Agent) CustomTracker(t Tracker) {
 // Run call unblocking operation and start event
 // cycle with collect metrics
 // from runtime
-func (a *Agent) Run(ctx context.Context) {
-	reportTicker := time.NewTicker(time.Duration(a.reportInterval) * time.Second)
+func (a *Agent) Run() {
+	reportTicker := time.NewTicker(a.reportInterval)
+	a.exit = make(chan struct{})
 
-LOOP:
-	// Loop is label for break in select construction
 	for {
 		select {
-		case <-ctx.Done():
-			// Gracefully shutdown all agent's components
-			a.client.Shutdown()
+		case <-a.exit:
+			// Gracefully shutdown ticker
 			reportTicker.Stop()
-
 			log.Printf("agent been gracefully shutdown")
 
-			break LOOP
-
+			return
 		case <-reportTicker.C:
 			a.report()
 		}
 	}
+}
+
+// Shutdown call functional for correct exits from program
+func (a *Agent) Shutdown() {
+	// Gracefully shutdown all agent's components
+	a.exit <- struct{}{}
+	a.client.Shutdown()
 }
 
 // Sending report with metrics
@@ -235,10 +240,8 @@ func (a *Agent) report() {
 func getMetricType(met Metric) string {
 	switch met.(type) {
 	case Gauge:
-
 		return gaugeType
 	case Counter:
-
 		return counterType
 	default:
 		return unknownType

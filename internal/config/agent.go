@@ -1,18 +1,20 @@
 package config
 
 import (
-	"gopkg.in/yaml.v3"
 	"os"
+	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // AgentConfig configuration for agent
 type AgentConfig struct {
-	Host                 string `yaml:"host"`
-	Timeout              int    `yaml:"timeout"`
-	MaxIdleConns         int    `yaml:"maxIdleConns"`
-	MaxRequestsPerMoment int    `yaml:"maxRequestsPerMoment"`
-	ReportInterval       int    `yaml:"reportInterval"`
-	PollInterval         int    `yaml:"pollInterval"`
+	Host                 string        `yaml:"host"`
+	Timeout              time.Duration `yaml:"timeout"`
+	MaxIdleConns         int           `yaml:"maxIdleConns"`
+	MaxRequestsPerMoment int           `yaml:"maxRequestsPerMoment"`
+	ReportInterval       time.Duration `yaml:"reportInterval"`
+	PollInterval         time.Duration `yaml:"pollInterval"`
 }
 
 // ReadAgentConfig read file with configuration and load it
