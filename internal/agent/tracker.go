@@ -34,10 +34,10 @@ func (r *tracker) Untrack(met Metric) {
 
 // Status returned information about actual metrics state
 func (r *tracker) Status() []Status {
-	s := make([]Status, len(r.metrics))
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	s := make([]Status, len(r.metrics))
 
 	count := 0
 	for k, v := range r.metrics {

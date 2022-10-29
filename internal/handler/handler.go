@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	gauge   = "gauge"
-	counter = "counter"
+	metricTypeGauge   = "gauge"
+	metricTypeCounter = "counter"
 )
 
 type metricService interface {
@@ -52,7 +52,7 @@ func panicMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if i := recover(); i != nil {
-				log.Printf("panic at %s: %v", r.URL.Path, i)
+				log.Printf("panic at %s: %v\n", r.URL.Path, i)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 			}
 		}()
@@ -69,7 +69,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricType, ok := vars["metric_type"]
 
 	if !ok {
-		http.Error(w, "unable parse path parameter 'metric_type'", http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'metric_type': parameter not found in request", http.StatusBadRequest)
 
 		return
 	}
@@ -77,7 +77,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName, ok := vars["metric_name"]
 
 	if !ok {
-		http.Error(w, "unable parse path parameter 'metric_name'", http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'metric_name': parameter not found in request", http.StatusBadRequest)
 
 		return
 	}
@@ -85,7 +85,7 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	value, ok := vars["value"]
 
 	if !ok {
-		http.Error(w, "unable parse path parameter 'value'", http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'value': parameter not found in request", http.StatusBadRequest)
 
 		return
 	}
@@ -93,19 +93,21 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	// Validate path params
 
 	if len(metricName) == 0 {
-		log.Println("unable to parse name. Expected: string with length > 0")
-		http.Error(w, "unable to parse name. Expected: string with length > 0", http.StatusBadRequest)
+		msg := "unable to parse name. Expected: string with length > 0"
+		log.Println(msg)
+		http.Error(w, msg, http.StatusBadRequest)
 
 		return
 	}
 
 	switch metricType {
-	case gauge:
+	case metricTypeGauge:
 		valueFloat64, err := strconv.ParseFloat(value, 64)
 
 		if err != nil {
-			log.Printf("unable to parse value. Expected: float. Actual: %s", value)
-			http.Error(w, fmt.Sprintf("unable to parse value. Expected: float. Actual: %s", value), http.StatusBadRequest)
+			msg := fmt.Sprintf("unable to parse value. Expected: float. Actual: %s", value)
+			log.Println(msg)
+			http.Error(w, msg, http.StatusBadRequest)
 
 			return
 		}
@@ -116,19 +118,19 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err != nil {
-			log.Printf("unable to update/create gauge metric with name=%s and value=%s", metricName, value)
-			http.Error(w, fmt.Sprintf("unable to update/create gauge metric with name=%s and value=%s",
-				metricName, value), http.StatusInternalServerError)
+			msg := fmt.Sprintf("unable to update/create gauge metric with name=%s and value=%s", metricName, value)
+			log.Println(msg)
+			http.Error(w, msg, http.StatusInternalServerError)
 
 			return
 		}
-	case counter:
+	case metricTypeCounter:
 		valueInt64, err := strconv.ParseInt(value, 10, 64)
 
 		if err != nil {
-			log.Printf("unable to parse value. Expected: int. Actual: %s", value)
-			http.Error(w, fmt.Sprintf("unable to parse value. Expected: int. Actual: %s",
-				value), http.StatusBadRequest)
+			msg := fmt.Sprintf("unable to parse value. Expected: int. Actual: %s", value)
+			log.Println(msg)
+			http.Error(w, msg, http.StatusBadRequest)
 
 			return
 		}
@@ -139,15 +141,16 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err != nil {
-			log.Printf("unable to update/create counter metric with name=%s and value=%s", metricName, value)
-			http.Error(w, fmt.Sprintf("unable to update/create counter metric with name=%s and value=%s",
-				metricName, value), http.StatusInternalServerError)
+			msg := fmt.Sprintf("unable to update/create counter metric with name=%s and value=%s", metricName, value)
+			log.Println(msg)
+			http.Error(w, msg, http.StatusInternalServerError)
 
 			return
 		}
 	default:
-		log.Printf("unknown metric type. Expected %s or %s. Actual: %s\n", gauge, counter, metricType)
-		http.Error(w, fmt.Sprintf("unknown metric type. Expected %s or %s. Actual: %s\n", gauge, counter, metricType), http.StatusNotImplemented)
+		msg := fmt.Sprintf("unknown metric type. Expected %s or %s. Actual: %s\n", metricTypeGauge, metricTypeCounter, metricType)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusNotImplemented)
 
 		return
 	}
@@ -169,7 +172,7 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	metricType, ok := vars["metric_type"]
 
 	if !ok {
-		http.Error(w, "unable parse path parameter 'metric_type'", http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'metric_type': parameter not found in request", http.StatusBadRequest)
 
 		return
 	}
@@ -177,26 +180,26 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	metricName, ok := vars["metric_name"]
 
 	if !ok {
-		http.Error(w, "unable parse path parameter 'metric_name'", http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'metric_name': parameter not found in request", http.StatusBadRequest)
 
 		return
 	}
 
 	if len(metricName) == 0 {
-		http.Error(w, "unable parse path parameter 'metric_type'", http.StatusBadRequest)
+		http.Error(w, "unable parse path parameter 'metric_name'. Expected: string with length > 0", http.StatusBadRequest)
 
 		return
 	}
 
 	switch metricType {
-	case gauge:
+	case metricTypeGauge:
 		metric, err := h.metSrv.GetGauge(ctx, metricName)
 
 		if err != nil {
 			// TODO: убрать костыль и сделать проверку на no rows
-			log.Printf("unable to select gauge metric with name=%s", metricName)
-			http.Error(w, fmt.Sprintf("unable to select gauge metric with name=%s", metricName),
-				http.StatusNotFound)
+			msg := fmt.Sprintf("unable to select gauge metric with name=%s", metricName)
+			log.Println(msg)
+			http.Error(w, msg, http.StatusNotFound)
 
 			return
 		}
@@ -204,18 +207,18 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write([]byte(strconv.FormatFloat(metric.Value, 'f', -1, 64)))
 
 		if err != nil {
-			log.Printf("unable to write body")
+			log.Printf("unable to write body. Error: %s\n", err)
 			http.Error(w, "internal server error",
 				http.StatusNotFound)
 		}
-	case counter:
+	case metricTypeCounter:
 		metric, err := h.metSrv.GetCounter(ctx, metricName)
 
 		if err != nil {
 			// TODO: убрать костыль и сделать проверку на no rows
-			log.Printf("unable to select counter metric with name=%s", metricName)
-			http.Error(w, fmt.Sprintf("unable to counter gauge metric with name=%s", metricName),
-				http.StatusNotFound)
+			msg := fmt.Sprintf("unable to select counter metric with name=%s", metricName)
+			log.Println(msg)
+			http.Error(w, msg, http.StatusNotFound)
 
 			return
 		}
@@ -223,14 +226,14 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write([]byte(fmt.Sprintf("%d", metric.Value)))
 
 		if err != nil {
-			log.Printf("unable to write body")
+			log.Printf("unable to write body. Error: %s\n", err)
 			http.Error(w, "internal server error",
 				http.StatusNotFound)
 		}
 	default:
-		log.Printf("unknown metric type. Expected %s or %s. Actual: %s\n", gauge, counter, metricType)
-		http.Error(w, fmt.Sprintf("unknown metric type. Expected %s or %s. Actual: %s\n", gauge, counter, metricType),
-			http.StatusNotImplemented)
+		msg := fmt.Sprintf("unknown metric type. Expected %s or %s. Actual: %s", metricTypeGauge, metricTypeCounter, metricType)
+		log.Println(msg)
+		http.Error(w, msg, http.StatusNotImplemented)
 
 		return
 	}
@@ -259,6 +262,7 @@ func (h *Handler) GetStaticAllMetrics(w http.ResponseWriter, r *http.Request) {
 	data, err := h.metSrv.GetAll(ctx)
 
 	if err != nil {
+		log.Printf("unable to get all metrics. Error: %s\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 
@@ -266,7 +270,6 @@ func (h *Handler) GetStaticAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("template execute finished with err. Error: %s\n", err)
-
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }

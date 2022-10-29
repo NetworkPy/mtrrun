@@ -108,8 +108,9 @@ type Agent struct {
 	// If pollInterval is empty that will be use default value - 10 second.
 	pollInterval time.Duration
 
-	// Channel for gracefully shutdown
-	exit chan struct{}
+	// Channel and sync.Once for gracefully shutdown
+	exit       chan struct{}
+	onceCloser sync.Once
 
 	host                 string
 	maxRequestsPerMoment int
@@ -197,8 +198,10 @@ func (a *Agent) Run() {
 // Shutdown call functional for correct exits from program
 func (a *Agent) Shutdown() {
 	// Gracefully shutdown all agent's components
-	a.exit <- struct{}{}
-	a.client.Shutdown()
+	a.onceCloser.Do(func() {
+		close(a.exit)
+		a.client.Shutdown()
+	})
 }
 
 // Sending report with metrics
@@ -208,7 +211,7 @@ func (a *Agent) report() {
 	// For implementation semaphore
 	channel := make(chan struct{}, a.maxRequestsPerMoment)
 
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
 
 	for i := 0; i < len(s); i++ {
 

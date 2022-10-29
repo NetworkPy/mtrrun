@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
-	"github.com/gorilla/mux"
-	"github.com/mtrrun/internal/handler"
-	"github.com/mtrrun/internal/repository"
-	"github.com/mtrrun/internal/service"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/mtrrun/internal/handler"
+	"github.com/mtrrun/internal/repository"
+	"github.com/mtrrun/internal/service"
 )
 
 // TODO: will be remove how project starts  to use config
@@ -49,7 +50,7 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-	log.Printf("server started on 8080 port")
+	log.Printf("starting server on %q addr", defaultAddr)
 
 	<-done
 	log.Print("server stopped")
@@ -63,5 +64,6 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("server shutdown failed:%+v", err)
 	}
+
 	log.Print("server exited properly")
 }

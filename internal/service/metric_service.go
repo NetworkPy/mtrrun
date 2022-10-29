@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/mtrrun/internal/model"
 	"log"
 	"strconv"
+
+	"github.com/mtrrun/internal/model"
 )
 
 // metricRepository contract for repository layer
@@ -46,12 +47,12 @@ func (s *MetricService) GetGauge(ctx context.Context, name string) (model.GetGau
 	metric, err := s.metRepo.SelectGaugeByName(ctx, name)
 
 	if err != nil {
-		log.Println("metric with type 'gauge' not found")
+		log.Printf("metric with type=gauge and name=%s not found\n", name)
 
 		return result, err
 	}
 
-	log.Println("metric with type 'gauge' found")
+	log.Printf("metric with type=gauge and name=%s found\n", name)
 
 	// Mapping parameters to DTO
 	result.Name = metric.Name
@@ -67,12 +68,12 @@ func (s *MetricService) GetCounter(ctx context.Context, name string) (model.GetC
 	metric, err := s.metRepo.SelectCounterByName(ctx, name)
 
 	if err != nil {
-		log.Println("metric with type 'counter' not found")
+		log.Printf("metric with type=counter and name=%s not found\n", name)
 
 		return result, err
 	}
 
-	log.Println("metric with type 'counter' found")
+	log.Printf("metric with type=counter and name=%s found\n", name)
 
 	// Mapping parameters to DTO
 	result.Name = metric.Name
@@ -89,38 +90,38 @@ func (s *MetricService) PutGauge(ctx context.Context, dto model.PutGaugeDTO) err
 
 	// Now error doesn't return fatal error. Any error = metric not exist
 	if err != nil {
-		log.Println("metric with type 'gauge' not found")
-		log.Println("metric with type 'gauge' will be create")
+		log.Printf("metric with type=gauge and name=%s not found\n", dto.Name)
+		log.Printf("metric with type=gauge and name=%s will be created\n", dto.Name)
 
 		// Creating new metric if it not exists
 		err = s.metRepo.InsertGauge(ctx, model.Gauge(dto))
 
 		if err != nil {
-			log.Println("metric with type 'gauge' didn't be create")
+			log.Printf("metric with type=gauge and name=%s was not created\n", dto.Name)
 
 			return err
 		}
 
-		log.Println("metric with type 'gauge' created")
+		log.Printf("metric with type=gauge and name=%s created\n", dto.Name)
 
 		return nil
 	}
 
-	log.Println("metric with type 'gauge' found")
+	log.Printf("metric with type=gauge and name=%s found\n", dto.Name)
 
-	log.Println("metric with type 'gauge' will be update")
+	log.Printf("metric with type=gauge and name=%s will be updated\n", dto.Name)
 
 	// Updating values if metric exists
 	data.Value = dto.Value
 	err = s.metRepo.UpdateGauge(ctx, data)
 
 	if err != nil {
-		log.Println("metric with type 'gauge' didn't be update")
+		log.Printf("metric with type=gauge and name=%s was not updated\n", dto.Name)
 
 		return err
 	}
 
-	log.Println("metric with type 'gauge' updated")
+	log.Printf("metric with type=gauge and name=%s updated\n", dto.Name)
 
 	return nil
 }
@@ -133,53 +134,51 @@ func (s *MetricService) PutCounter(ctx context.Context, dto model.PutCounterDTO)
 
 	// Now error doesn't return fatal error. Any error = metric not exist
 	if err != nil {
-		log.Println("metric with type 'counter' not found")
+		log.Printf("metric with type=counter and name=%s not found\n", dto.Name)
 
-		log.Println("metric with type 'counter' will be create")
+		log.Printf("metric with type=counter and name=%s will be created\n", dto.Name)
 
 		// Creating new metric if it not exists
 		err = s.metRepo.InsertCounter(ctx, model.Counter(dto))
 
 		if err != nil {
-			log.Println("metric with type 'counter' didn't be create")
+			log.Printf("metric with type=counter and name=%s was not created\n", dto.Name)
 
 			return err
 		}
 
-		log.Println("metric with type 'counter' created")
+		log.Printf("metric with type=counter and name=%s created\n", dto.Name)
 
 		return nil
 	}
 
-	log.Println("metric with type 'counter' found")
+	log.Printf("metric with type=counter and name=%s found\n", dto.Name)
 
-	log.Println("metric with type 'counter' will be update")
+	log.Printf("metric with type=counter and name=%s will be updated\n", dto.Name)
 
 	// Adding new value to older
 	data.Value += dto.Value
 	err = s.metRepo.UpdateCounter(ctx, data)
 
 	if err != nil {
-		log.Println("metric with type 'counter' didn't be update")
+		log.Printf("metric with type=counter and name=%s was not updated\n", dto.Name)
 
 		return err
 	}
 
-	log.Println("metric with type 'counter' updated")
+	log.Printf("metric with type=counter and name=%s updated\n", dto.Name)
 
 	return nil
 }
 
 // GetAll return all metrics. Calling repository methods for select all gauges and counters
 func (s *MetricService) GetAll(ctx context.Context) ([]model.GetAllDTO, error) {
-	result := make([]model.GetAllDTO, 0)
-
 	dataGauge, err := s.metRepo.SelectGauge(ctx)
 
 	if err != nil {
 		log.Println("unable to find all gauge metrics")
 
-		return result, err
+		return nil, err
 	}
 
 	dataCounter, err := s.metRepo.SelectCounter(ctx)
@@ -187,8 +186,10 @@ func (s *MetricService) GetAll(ctx context.Context) ([]model.GetAllDTO, error) {
 	if err != nil {
 		log.Println("unable to find all counter metrics")
 
-		return result, err
+		return nil, err
 	}
+
+	result := make([]model.GetAllDTO, 0)
 
 	for i := 0; i < len(dataGauge); i++ {
 		result = append(result, model.GetAllDTO{

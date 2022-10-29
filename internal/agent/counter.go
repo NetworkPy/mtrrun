@@ -29,10 +29,15 @@ func (c *counter) Inc() {
 
 // GetValue returned value
 func (c *counter) GetValue() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	var value int64
 
-	return fmt.Sprintf("%d", c.val)
+	c.mu.RLock()
+
+	value = c.val
+
+	c.mu.RUnlock()
+
+	return fmt.Sprintf("%d", value)
 }
 
 func NewCounter(name string, help string) Counter {

@@ -61,10 +61,15 @@ func (g *gauge) Sub(val float64) {
 
 // GetValue returned value
 func (g *gauge) GetValue() string {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	var val float64
 
-	return fmt.Sprintf("%.2f", g.val)
+	g.mu.Lock()
+
+	val = g.val
+
+	g.mu.Unlock()
+
+	return fmt.Sprintf("%.2f", val)
 }
 
 func NewGauge(name string, help string) Gauge {

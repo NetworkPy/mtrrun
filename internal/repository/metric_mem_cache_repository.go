@@ -39,7 +39,7 @@ func (c *MetricMemCache) SelectGaugeByName(ctx context.Context, name string) (mo
 		return metric, nil
 	}
 
-	return metric, fmt.Errorf("gauge metric by name not found")
+	return metric, fmt.Errorf("gauge metric by name=%s not found", name)
 }
 
 // SelectCounterByName selecting counter metric by name
@@ -55,12 +55,16 @@ func (c *MetricMemCache) SelectCounterByName(ctx context.Context, name string) (
 		return metric, nil
 	}
 
-	return metric, fmt.Errorf("counter metric by name not found")
+	return metric, fmt.Errorf("counter metric by name=%s not found", name)
 }
 
 func (c *MetricMemCache) InsertGauge(ctx context.Context, metric model.Gauge) error {
 	c.gaugeMu.Lock()
 	defer c.gaugeMu.Unlock()
+
+	if _, ok := c.gauge[metric.Name]; ok {
+		return fmt.Errorf("unable to create metric with name=%s and type=gauge. Metric exists", metric.Name)
+	}
 
 	c.gauge[metric.Name] = metric
 
@@ -71,6 +75,10 @@ func (c *MetricMemCache) InsertGauge(ctx context.Context, metric model.Gauge) er
 func (c *MetricMemCache) InsertCounter(ctx context.Context, metric model.Counter) error {
 	c.counterMu.Lock()
 	defer c.counterMu.Unlock()
+
+	if _, ok := c.counter[metric.Name]; ok {
+		return fmt.Errorf("unable to create metric with name=%s and type=counter. Metric is exists", metric.Name)
+	}
 
 	c.counter[metric.Name] = metric
 
@@ -86,6 +94,10 @@ func (c *MetricMemCache) UpdateGauge(ctx context.Context, curr model.Gauge) erro
 	// But in continue we could want to update
 	// not all fields
 
+	if _, ok := c.gauge[curr.Name]; !ok {
+		return fmt.Errorf("unable to update metric with name=%s and type=gauge. Metric is not exists", curr.Name)
+	}
+
 	prev := c.gauge[curr.Name]
 
 	prev.Value = curr.Value
@@ -99,6 +111,10 @@ func (c *MetricMemCache) UpdateGauge(ctx context.Context, curr model.Gauge) erro
 func (c *MetricMemCache) UpdateCounter(ctx context.Context, curr model.Counter) error {
 	c.counterMu.Lock()
 	defer c.counterMu.Unlock()
+
+	if _, ok := c.counter[curr.Name]; !ok {
+		return fmt.Errorf("unable to update metric with name=%s and type=counter. Metric is not exists", curr.Name)
+	}
 
 	prev := c.counter[curr.Name]
 
@@ -114,6 +130,10 @@ func (c *MetricMemCache) DeleteGauge(ctx context.Context, name string) error {
 	c.gaugeMu.Lock()
 	defer c.gaugeMu.Unlock()
 
+	if _, ok := c.gauge[name]; !ok {
+		return fmt.Errorf("unable to delete metric with name=%s and type=gauge. Metric is not exists", name)
+	}
+
 	delete(c.gauge, name)
 
 	return nil
@@ -123,6 +143,10 @@ func (c *MetricMemCache) DeleteGauge(ctx context.Context, name string) error {
 func (c *MetricMemCache) DeleteCounter(ctx context.Context, name string) error {
 	c.counterMu.Lock()
 	defer c.counterMu.Unlock()
+
+	if _, ok := c.counter[name]; !ok {
+		return fmt.Errorf("unable to delete metric with name=%s and type=counter. Metric is not exists", name)
+	}
 
 	delete(c.counter, name)
 

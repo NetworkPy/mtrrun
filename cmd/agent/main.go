@@ -80,13 +80,12 @@ const (
 
 // For configuration
 const (
-	defaultPollInterval  = 2
-	host                 = "127.0.0.1:8080"
-	timeout              = 5 * time.Second
-	maxIdleConns         = 5
-	maxRequestsPerMoment = 5
-	reportInterval       = 10 * time.Second
-	pollInterval         = 2 * time.Second
+	defaultHost                 = "127.0.0.1:8080"
+	defaultTimeout              = 5 * time.Second
+	defaultMaxIdleConns         = 5
+	defaultMaxRequestsPerMoment = 5
+	defaultReportInterval       = 10 * time.Second
+	defaultPollInterval         = 2 * time.Second
 )
 
 func main() {
@@ -102,12 +101,12 @@ func main() {
 
 	// TODO: hardcode config because CI/CD don't load config file
 	c := &config.AgentConfig{
-		Host:                 host,
-		Timeout:              timeout,
-		MaxIdleConns:         maxIdleConns,
-		MaxRequestsPerMoment: maxRequestsPerMoment,
-		ReportInterval:       reportInterval,
-		PollInterval:         pollInterval,
+		Host:                 defaultHost,
+		Timeout:              defaultTimeout,
+		MaxIdleConns:         defaultMaxIdleConns,
+		MaxRequestsPerMoment: defaultMaxRequestsPerMoment,
+		ReportInterval:       defaultReportInterval,
+		PollInterval:         defaultPollInterval,
 	}
 
 	a, err := agent.New(&agent.Config{
@@ -122,11 +121,38 @@ func main() {
 		log.Fatalf("failed to create agent: %s", err)
 	}
 
-	m := &runtime.MemStats{}
+	// Channel for gracefully shutdown
+	exitCh := make(chan struct{})
 
-	if c.PollInterval == 0 {
-		c.PollInterval = defaultPollInterval
-	}
+	// Starting new goroutine inside initMetrics
+	initMetrics(a, c.PollInterval, exitCh)
+
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		// Starting agent cycle
+		a.Run()
+	}()
+
+	log.Println("agent started")
+
+	<-done
+
+	go func() {
+		a.Shutdown()
+		log.Println("agent stopped")
+		close(exitCh)
+	}()
+
+	<-exitCh
+
+	log.Println("agent exited properly")
+}
+
+// initMetrics init all metrics and start job with runtime.MemStats in a separate goroutine
+func initMetrics(a *agent.Agent, pollInterval time.Duration, exitCh chan struct{}) {
+	var m = &runtime.MemStats{}
 
 	// Init runtime metrics
 	metricAlloc := agent.NewGauge(MetricAlloc, "")
@@ -158,7 +184,7 @@ func main() {
 	metricTotalAlloc := agent.NewGauge(MetricTotalAlloc, "")
 
 	// Init custom metrics
-	metricPollCount := agent.NewGauge(MetricPollCount, "")
+	metricPollCount := agent.NewCounter(MetricPollCount, "")
 	metricRandomValue := agent.NewGauge(MetricRandomValue, "")
 
 	// Adding all metrics to track
@@ -193,10 +219,7 @@ func main() {
 	a.Track(metricRandomValue)
 
 	// Ticker for cycle with collecting metrics
-	pollTicker := time.NewTicker(c.PollInterval)
-
-	// Channel for gracefully shutdown
-	exitCh := make(chan struct{})
+	pollTicker := time.NewTicker(pollInterval)
 
 	go func() {
 		for {
@@ -243,26 +266,4 @@ func main() {
 			}
 		}
 	}()
-
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		// Starting agent cycle
-		a.Run()
-	}()
-
-	log.Println("agent started")
-
-	<-done
-
-	go func() {
-		a.Shutdown()
-		log.Println("agent stopped")
-		close(exitCh)
-	}()
-
-	<-exitCh
-
-	log.Println("agent exited properly")
 }
