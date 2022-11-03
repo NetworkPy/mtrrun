@@ -1,0 +1,3 @@
+go-test:
+
+	go test -parallel 3 -v -race -cover ./...
